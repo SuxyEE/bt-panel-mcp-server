@@ -74,7 +74,7 @@
       "command": "npx",
       "args": ["-y", "bt-panel-mcp-server"],
       "env": {
-        "BT_PANEL_URL": "http://你的服务器IP:8888",
+        "BT_PANEL_URL": "http://服务器IP:面板端口/安全入口",
         "BT_API_KEY": "你的API密钥",
         "BT_MODE": "readonly"
       }
@@ -92,7 +92,7 @@
       "command": "node",
       "args": ["本地路径/bt-panel-mcp-server/dist/index.js"],
       "env": {
-        "BT_PANEL_URL": "http://你的服务器IP:8888",
+        "BT_PANEL_URL": "http://服务器IP:面板端口/安全入口",
         "BT_API_KEY": "你的API密钥",
         "BT_MODE": "readonly"
       }
@@ -101,10 +101,20 @@
 }
 ```
 
-**替换以下内容：**
-- `http://你的服务器IP:8888` → 你的宝塔面板地址
-- `你的API密钥` → 第一步复制的接口密钥
-- `BT_MODE` → `readonly`（只读，默认）或 `full`（全量管理，含写操作）
+**`BT_PANEL_URL` 怎么填？** 对照第一步截图中的信息拼接：
+
+| 情况 | 填写示例 |
+|------|----------|
+| 默认端口 8888，无安全入口 | `http://123.456.789.0:8888` |
+| 自定义端口，无安全入口 | `http://123.456.789.0:35335` |
+| 自定义端口 + 安全入口 | `http://123.456.789.0:35335/a5cbfadd` |
+| 开启了面板 HTTPS | `https://123.456.789.0:35335/a5cbfadd` |
+
+> 安全入口路径在「设置 → 常用设置 → 安全入口」中查看，没设置则不用填。
+
+**其余替换内容：**
+- `你的API密钥` → 第一步「API接口配置」页面中复制的接口密钥
+- `BT_MODE` → `readonly`（只读，默认）或 `full`（含建站/写文件等管理操作）
 
 ### 第三步：重启 AI 工具
 
