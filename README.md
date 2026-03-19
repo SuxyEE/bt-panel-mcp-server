@@ -1,6 +1,10 @@
-# bt-mcp
+# bt-panel-mcp-server
 
 宝塔面板（BT Panel）MCP Server，让任意支持 MCP 协议的 AI 助手直接用自然语言查询服务器日志、管理网站、查看系统状态，不用再手动登录面板。
+
+[![npm version](https://img.shields.io/npm/v/bt-panel-mcp-server.svg)](https://www.npmjs.com/package/bt-panel-mcp-server) [![npm downloads](https://img.shields.io/npm/dm/bt-panel-mcp-server.svg)](https://www.npmjs.com/package/bt-panel-mcp-server) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+[GitHub](https://github.com/SuxyEE/bt-panel-mcp-server) | [npm](https://www.npmjs.com/package/bt-panel-mcp-server)
 
 默认 **只读模式**，设置 `BT_MODE=full` 可开启全量管理工具。
 
