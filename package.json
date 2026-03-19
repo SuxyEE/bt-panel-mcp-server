@@ -29,7 +29,7 @@
   "bin": {
     "bt-panel-mcp-server": "dist/index.js"
   },
-  "files": ["dist", "README.md", "lxfs.jpg"],
+  "files": ["dist", "README.md", "lxfs.jpg", "bt-panel-settings.png"],
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
