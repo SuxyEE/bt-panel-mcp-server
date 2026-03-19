@@ -1,0 +1,51 @@
+{
+  "name": "bt-panel-mcp-server",
+  "version": "0.1.0",
+  "description": "MCP Server for Baota (BT) Panel — query logs, manage websites, deploy HTML via AI assistant. Supports readonly & full mode.",
+  "keywords": [
+    "mcp",
+    "baota",
+    "bt-panel",
+    "宝塔",
+    "nginx",
+    "logs",
+    "model-context-protocol",
+    "deploy",
+    "website-management",
+    "ai-tools"
+  ],
+  "author": "suxyee",
+  "license": "MIT",
+  "homepage": "https://github.com/SuxyEE/bt-panel-mcp-server#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SuxyEE/bt-panel-mcp-server.git"
+  },
+  "bugs": {
+    "url": "https://github.com/SuxyEE/bt-panel-mcp-server/issues"
+  },
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "bt-panel-mcp-server": "dist/index.js"
+  },
+  "files": ["dist", "README.md", "lxfs.jpg"],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/index.js",
+    "prepare": "npm run build"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.27.1",
+    "zod": "^3.24.1",
+    "zod-to-json-schema": "^3.25.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
