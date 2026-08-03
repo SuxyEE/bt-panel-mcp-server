@@ -1,6 +1,6 @@
 {
   "name": "bt-panel-mcp-server",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "MCP Server for Baota (BT) Panel — query logs, manage websites, deploy HTML via AI assistant. Supports readonly & full mode.",
   "keywords": [
     "mcp",
@@ -29,15 +29,23 @@
   "bin": {
     "bt-panel-mcp-server": "dist/index.js"
   },
-  "files": ["dist", "README.md", "lxfs.jpg", "bt-panel-settings.png"],
+  "files": [
+    "dist",
+    "README.md",
+    "lxfs.jpg",
+    "bt-panel-settings.png"
+  ],
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
     "start": "node dist/index.js",
+    "generate:api-catalog": "node scripts/generate-api-catalog.mjs",
+    "test": "npm run build && node scripts/smoke-test.mjs",
+    "prepublishOnly": "npm test",
     "prepare": "npm run build"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.27.1",
+    "@modelcontextprotocol/sdk": "^1.30.0",
     "zod": "^3.24.1",
     "zod-to-json-schema": "^3.25.1"
   },
@@ -46,6 +54,6 @@
     "typescript": "^5.7.0"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   }
 }

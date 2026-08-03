@@ -42,6 +42,10 @@ export interface DiskInfo {
   size: [string, string, string, string];
 }
 
+export type BtApiMethod = 'GET' | 'POST';
+
+export type BtApiParams = Record<string, unknown>;
+
 function getSignature(apiKey: string): { request_time: number; request_token: string } {
   const request_time = Math.floor(Date.now() / 1000);
   const md5Key = crypto.createHash('md5').update(apiKey).digest('hex');
@@ -49,41 +53,71 @@ function getSignature(apiKey: string): { request_time: number; request_token: st
   return { request_time, request_token };
 }
 
-async function postRequest(config: BtConfig, path: string, extraParams: Record<string, string | number> = {}): Promise<unknown> {
-  const sig = getSignature(config.apiKey);
-  const params = new URLSearchParams({
-    request_time: String(sig.request_time),
-    request_token: sig.request_token,
-    ...Object.fromEntries(Object.entries(extraParams).map(([k, v]) => [k, String(v)])),
-  });
+function serializeParam(value: unknown): string {
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+    return String(value);
+  }
+  if (value === null) return '';
+  return JSON.stringify(value);
+}
 
-  const body = params.toString();
-  // 宝塔安全入口（如 /4d33e98c）只用于登录页，API 接口不需要带此前缀
-  // 从 panelUrl 中剔除安全入口路径，只保留 协议://主机:端口
+async function requestBtApi(
+  config: BtConfig,
+  method: BtApiMethod,
+  path: string,
+  extraParams: BtApiParams = {},
+): Promise<unknown> {
+  if (!path.startsWith('/') || path.startsWith('//')) {
+    throw new Error(`BT API path must start with one slash: ${path}`);
+  }
+
+  const sig = getSignature(config.apiKey);
+  const params = new URLSearchParams();
+  params.set('request_time', String(sig.request_time));
+  params.set('request_token', sig.request_token);
+  for (const [key, value] of Object.entries(extraParams)) {
+    if (value !== undefined) params.set(key, serializeParam(value));
+  }
+
+  // The security entrance only protects the login page; API routes live at the origin root.
   const parsedBase = new URL(config.panelUrl.replace(/\/$/, ''));
   const apiBase = `${parsedBase.protocol}//${parsedBase.host}`;
-  const fullUrl = new URL(apiBase + path);
+  const fullUrl = new URL(path, apiBase);
+  if (method === 'GET') {
+    for (const [key, value] of params) fullUrl.searchParams.set(key, value);
+  }
+
+  const body = method === 'POST' ? params.toString() : undefined;
   const isHttps = fullUrl.protocol === 'https:';
   const port = parseInt(fullUrl.port || (isHttps ? '443' : '80'), 10);
 
   return new Promise((resolve, reject) => {
-    const options = {
+    const options: http.RequestOptions = {
       hostname: fullUrl.hostname,
       port,
       path: fullUrl.pathname + fullUrl.search,
-      method: 'POST',
-      headers: {
+      method,
+      headers: method === 'POST' ? {
         'Content-Type': 'application/x-www-form-urlencoded',
-        'Content-Length': Buffer.byteLength(body),
-      },
-      rejectUnauthorized: false,
+        'Content-Length': Buffer.byteLength(body ?? ''),
+      } : undefined,
     };
+
+    // Self-signed panel certificates require an explicit opt-in instead of silently disabling TLS verification.
+    if (isHttps && process.env.BT_ALLOW_INSECURE_TLS === 'true') {
+      (options as https.RequestOptions).rejectUnauthorized = false;
+    }
 
     const lib = isHttps ? https : http;
     const req = lib.request(options, (res) => {
       let data = '';
       res.on('data', (chunk) => (data += chunk));
       res.on('end', () => {
+        const statusCode = res.statusCode ?? 0;
+        if (statusCode < 200 || statusCode >= 300) {
+          reject(new Error(`BT API returned HTTP ${statusCode}: ${data.slice(0, 500)}`));
+          return;
+        }
         try {
           resolve(JSON.parse(data));
         } catch {
@@ -96,9 +130,13 @@ async function postRequest(config: BtConfig, path: string, extraParams: Record<s
     req.setTimeout(30000, () => {
       req.destroy(new Error('Request timeout'));
     });
-    req.write(body);
+    if (body !== undefined) req.write(body);
     req.end();
   });
+}
+
+async function postRequest(config: BtConfig, path: string, extraParams: BtApiParams = {}): Promise<unknown> {
+  return requestBtApi(config, 'POST', path, extraParams);
 }
 
 function getConfigFromEnv(): BtConfig {
@@ -108,6 +146,11 @@ function getConfigFromEnv(): BtConfig {
     throw new Error('Missing required environment variables: BT_PANEL_URL and BT_API_KEY');
   }
   return { panelUrl, apiKey };
+}
+
+/** Calls an official catalog operation without exposing the API key to the MCP client. */
+export async function callBtApi(method: BtApiMethod, path: string, params: BtApiParams = {}): Promise<unknown> {
+  return requestBtApi(getConfigFromEnv(), method, path, params);
 }
 
 // ── 网站管理 ──────────────────────────────────────────
@@ -193,9 +236,9 @@ export async function startSite(id: number, name: string): Promise<unknown> {
   return await postRequest(config, '/site?action=SiteStart', { id, name });
 }
 
-export async function setSiteNote(id: number, ps: string): Promise<unknown> {
+export async function setSiteNote(id: number, note: string): Promise<unknown> {
   const config = getConfigFromEnv();
-  return await postRequest(config, '/data?action=setPs&table=sites', { id, ps });
+  return await postRequest(config, '/site?action=site_rname', { id, rname: note });
 }
 
 export async function setSiteExpiry(id: number, edate: string): Promise<unknown> {

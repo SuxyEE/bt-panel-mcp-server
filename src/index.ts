@@ -23,6 +23,14 @@ import {
   handleManageNginxConfig,
   handleSaveFile,
 } from './tools/manage-nginx-config.js';
+import {
+  callOfficialApiSchema,
+  getOfficialApiOperationSchema,
+  handleCallOfficialApi,
+  handleGetOfficialApiOperation,
+  handleSearchOfficialApi,
+  searchOfficialApiSchema,
+} from './tools/official-api.js';
 
 /**
  * BT_MODE 环境变量控制工具集模式：
@@ -93,6 +101,16 @@ const READONLY_TOOLS: Tool[] = [
     description: '查询网站的备份列表，包括备份 ID、文件名、创建时间。',
     inputSchema: zodToJsonSchema(manageBackupsSchema) as Tool['inputSchema'],
   },
+  {
+    name: 'search_bt_api',
+    description: '搜索当前内置的宝塔官方 API 目录。返回操作 ID、HTTP 路由、必填参数和模块统计；所有模式可用。',
+    inputSchema: zodToJsonSchema(searchOfficialApiSchema) as Tool['inputSchema'],
+  },
+  {
+    name: 'get_bt_api_operation',
+    description: '获取一个官方宝塔 API 操作的完整参数定义。先用 search_bt_api 找到操作 ID。所有模式可用。',
+    inputSchema: zodToJsonSchema(getOfficialApiOperationSchema) as Tool['inputSchema'],
+  },
 ];
 
 // ── 全量工具（仅 BT_MODE=full 时开放）──────────────────
@@ -123,6 +141,11 @@ const FULL_TOOLS: Tool[] = [
     name: 'save_file',
     description: '【full 模式】写入/覆盖服务器上的任意文件内容（谨慎！）。',
     inputSchema: zodToJsonSchema(saveFileSchema) as Tool['inputSchema'],
+  },
+  {
+    name: 'call_bt_api',
+    description: '【full 模式】调用内置官方 API 目录中的任意操作。使用 get_bt_api_operation 核对参数；密钥、request_time、request_token 和 action 自动注入，不能由调用方覆盖。',
+    inputSchema: zodToJsonSchema(callOfficialApiSchema) as Tool['inputSchema'],
   },
 ];
 
@@ -182,6 +205,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         text = await handleManageBackups(input);
         break;
       }
+      case 'search_bt_api': {
+        text = await handleSearchOfficialApi(searchOfficialApiSchema.parse(args));
+        break;
+      }
+      case 'get_bt_api_operation': {
+        text = await handleGetOfficialApiOperation(getOfficialApiOperationSchema.parse(args));
+        break;
+      }
       // full 模式专用工具
       case 'manage_sites': {
         if (!IS_FULL) throw new Error('此工具需要 BT_MODE=full 才能使用，当前为只读模式');
@@ -206,6 +237,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case 'save_file': {
         if (!IS_FULL) throw new Error('此工具需要 BT_MODE=full 才能使用，当前为只读模式');
         text = await handleSaveFile(saveFileSchema.parse(args));
+        break;
+      }
+      case 'call_bt_api': {
+        if (!IS_FULL) throw new Error('此工具需要 BT_MODE=full 才能使用，当前为只读模式');
+        text = await handleCallOfficialApi(callOfficialApiSchema.parse(args));
         break;
       }
       default:

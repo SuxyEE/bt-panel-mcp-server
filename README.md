@@ -1,71 +1,93 @@
 # bt-panel-mcp-server
 
-宝塔面板（BT Panel）MCP Server，让任意支持 MCP 协议的 AI 助手直接用自然语言查询服务器日志、管理网站、查看系统状态，不用再手动登录面板。
+让支持 MCP 的 AI 助手安全地操作宝塔面板（BT Panel）。它既提供适合日常运维的高层工具，也内置当前官方 API 文档中的完整操作目录：先检索接口定义，再以受控方式调用。
 
 [![npm version](https://img.shields.io/npm/v/bt-panel-mcp-server.svg)](https://www.npmjs.com/package/bt-panel-mcp-server) [![npm downloads](https://img.shields.io/npm/dm/bt-panel-mcp-server.svg)](https://www.npmjs.com/package/bt-panel-mcp-server) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-[GitHub](https://github.com/SuxyEE/bt-panel-mcp-server) | [npm](https://www.npmjs.com/package/bt-panel-mcp-server)
+[GitHub](https://github.com/SuxyEE/bt-panel-mcp-server) | [npm](https://www.npmjs.com/package/bt-panel-mcp-server) | [宝塔官方 API 文档](https://docs.bt.cn/api/)
 
-默认 **只读模式**，设置 `BT_MODE=full` 可开启全量管理工具。
+## 能力概览
 
----
+| 能力域 | 可以做什么 | 可用模式 |
+|---|---|---|
+| 站点诊断 | 列出站点、读取 Nginx/应用/面板日志、查询网站域名与备份 | readonly / full |
+| 服务器观测 | CPU、内存、磁盘、网络、系统负载与面板操作日志 | readonly / full |
+| 文件与配置读取 | 读取任意指定文件、查看站点 Nginx 配置、按行数截取大日志 | readonly / full |
+| 网站生命周期 | 创建、启停、删除站点，设置备注和到期时间，查询 PHP 版本和目录保护状态 | full |
+| 域名与备份 | 绑定/解绑域名，列出、创建和删除网站备份 | full |
+| 文件与 Nginx 写入 | 保存网站文件或 Nginx 配置 | full |
+| 官方 API 全覆盖 | 查询并调用 369 个内置官方文档操作：系统、网站、数据库、文件、计划任务、FTP、SSL/ACME、SSH 安全、推送、项目部署、Java、Docker、反代等 | 目录 readonly；调用 full |
 
-## 这能做什么？
+默认是 `readonly`，不会暴露写入或管理操作。只有明确设置 `BT_MODE=full` 才会启用完整管理能力。
 
-在任意支持 MCP 协议的 AI 工具（Cursor、Claude Desktop、Windsurf、Cline、Cherry Studio 等）的对话里直接说：
+## 官方 API 覆盖范围
 
-**查询日志 & 监控**
-> "帮我看看 example.com 最近的 Nginx 错误日志"
->
-> "查一下 shop.com 的 Laravel 日志有没有报错"
->
-> "服务器现在 CPU 和内存使用情况怎么样？"
+内置目录来自宝塔官方 API 文档当前验证基线（面板 v11.7.0，文档提交 `1f8efe62fa9757d71a7259b063bd63e3775e2e3c`），共 **369 个可执行操作**。它不是把数百个工具同时塞入客户端，而是提供下面的稳定流程：
 
-**一键建站部署**（需要 `BT_MODE=full`）
-> "帮我生成一个小龙虾餐厅落地页，暗红色主题，部署到 claw.example.com，完成后给我访问地址"
->
-> "把刚才生成的活动报名 HTML 直接部署到服务器，用 IP 访问就行"
->
-> "把 example.com 首页的联系电话改成 138xxxxxxxx，直接更新到服务器"
+```text
+search_bt_api  ->  get_bt_api_operation  ->  call_bt_api
+查找能力           核对参数和路由              在 full 模式执行
+```
 
-**网站 & 域名管理**（需要 `BT_MODE=full`）
->  "帮我给 example.com 备份一下"
->
-> "给 example.com 绑定一个新域名 www.example.com"
->
-> "停用 test.example.com 这个测试站"
+| 官方模块 | 代表能力点 |
+|---|---|
+| 系统管理 | CPU/内存/磁盘/网络、服务启停、面板重启、升级、清理、守护任务 |
+| 网站管理 | 站点创建与删除、SSL/HTTPS、重写、运行目录、流量限制、反代、重定向、安全响应头 |
+| 数据库 | 数据库和用户、备份、导入状态、慢日志、错误日志、Binlog、MySQL 配置与状态 |
+| 文件 | 文件和目录浏览、读写、复制、上传、解压、回收站、文件历史、权限、Webshell 扫描 |
+| 计划任务与 FTP | 计划任务增删改查、执行日志、日志切割、自动备份、FTP 用户和权限管理 |
+| 证书与安全 | SSL 订单和证书、ACME 申请与续签、DNS API、SSH 安全配置与安全扫描 |
+| 项目与容器 | 项目部署、Java/Tomcat/Spring Boot、Docker 容器/镜像/网络/卷/应用商店、反向代理插件 |
+| 其他 | 推送、后台任务、Web SSH 终端配置、密码管理、风险扫描 |
 
----
+目录覆盖的是官方文档中的操作定义。目标面板是否能实际执行，仍取决于面板版本、插件是否安装、API 白名单、账号权限及参数有效性。
+
+## 工具清单
+
+### readonly 模式
+
+| 工具 | 作用 |
+|---|---|
+| `list_sites` | 列出宝塔已管理的网站，可按名称或域名搜索 |
+| `get_nginx_logs` | 读取指定站点的 Nginx 访问/错误日志，支持自动路径探测 |
+| `get_app_logs` | 查找和读取 Laravel、ThinkPHP、Java、Node.js 等常见应用日志 |
+| `get_panel_logs` | 查询面板操作日志，用于审计与排障 |
+| `get_system_status` | 汇总 CPU、内存、磁盘、网络和系统负载 |
+| `read_file` | 读取服务器上的指定文件，可限制最后 N 行 |
+| `get_nginx_config` | 读取站点的 Nginx 虚拟主机配置 |
+| `list_domains` | 查询站点绑定的域名和端口 |
+| `list_backups` | 查询站点备份记录 |
+| `search_bt_api` | 搜索 369 个官方 API 操作，按模块、操作名或说明筛选 |
+| `get_bt_api_operation` | 返回一个官方操作的 HTTP 方法、路径、固定 action、必填参数与说明 |
+
+### full 模式新增工具
+
+| 工具 | 作用 | 风险提示 |
+|---|---|---|
+| `manage_sites` | 创建、启停、删除站点；设置备注、到期时间 | 删除可选地连同目录、数据库、FTP 一起删除 |
+| `manage_domains` | 绑定或解绑域名 | 影响站点可访问域名 |
+| `manage_backups` | 创建或删除网站备份 | 删除后未必可恢复 |
+| `save_nginx_config` | 覆盖站点 Nginx 配置 | 保存后立即影响站点服务 |
+| `save_file` | 覆盖服务器上指定文件 | 可能影响应用运行或泄露敏感内容 |
+| `call_bt_api` | 执行内置官方目录中的任意操作 | 包含删除、重启、升级、证书、容器和数据库等高风险操作 |
+
+`BT_API_KEY`、`request_time`、`request_token` 与目录规定的 `action` 不接受 MCP 调用方传入，均由服务端生成或注入。
 
 ## 快速开始
 
-### 第一步：开启宝塔面板 API
+### 1. 开启宝塔 API
 
-登录宝塔面板 → 左侧菜单「**设置**」→「**常用设置**」，参考下图找到以下三项：
+登录宝塔面板，进入「设置」->「常用设置」：
 
 ![宝塔面板设置截图](./bt-panel-settings.png)
 
-1. **面板端口**（红框①）：记下端口号，如 `35335`，面板地址为 `http://服务器IP:端口`
-2. **安全入口**（红框②）：若已设置，面板地址需要带上此路径，如 `http://服务器IP:端口/a5cbfadd`
-3. **API 接口**（红框③）：打开开关 → 点击「API接口配置」→ 复制接口密钥，并将**本机 IP 加入白名单**（必须，否则请求会被拒绝）
+1. 记下**面板端口**，例如 `35335`。
+2. 记下**安全入口**；例如 `/a5cbfadd`。它需要放进 `BT_PANEL_URL`，但 API 请求会自动从站点根路径发起。
+3. 打开 **API 接口**，复制接口密钥，并将 MCP 运行主机 IP 加入 API 白名单。
 
-### 第二步：配置 MCP
+### 2. 配置 MCP 客户端
 
-各 AI 工具的配置文件路径不同，找到对应的文件编辑即可：
-
-| AI 工具 | 系统 | 配置文件路径 |
-|---------|------|-------------|
-| Cursor | Windows | `%USERPROFILE%\.cursor\mcp.json` |
-| Cursor | macOS / Linux | `~/.cursor/mcp.json` |
-| Claude Desktop | Windows | `%APPDATA%\Claude\claude_desktop_config.json` |
-| Claude Desktop | macOS | `~/Library/Application Support/Claude/claude_desktop_config.json` |
-| Windsurf | Windows | `%USERPROFILE%\.codeium\windsurf\mcp_config.json` |
-| Windsurf | macOS | `~/.codeium/windsurf/mcp_config.json` |
-| Cherry Studio | — | 设置 → MCP 服务器 → 添加 |
-| Cline / Roo Code | — | 插件设置 → MCP Servers |
-| 其他工具 | — | 参考对应工具文档中"MCP Server"配置说明 |
-
-**推荐：npx 方式（无需手动下载，始终使用最新版）**
+推荐通过 `npx` 运行：
 
 ```json
 {
@@ -74,7 +96,7 @@
       "command": "npx",
       "args": ["-y", "bt-panel-mcp-server"],
       "env": {
-        "BT_PANEL_URL": "http://服务器IP:面板端口/安全入口",
+        "BT_PANEL_URL": "https://服务器IP:面板端口/安全入口",
         "BT_API_KEY": "你的API密钥",
         "BT_MODE": "readonly"
       }
@@ -83,376 +105,168 @@
 }
 ```
 
-**本地方式（已克隆源码时使用）**
+本地源码运行时，把 `args` 改为本项目 `dist/index.js` 的绝对路径。配置文件位置因 Cursor、Claude Desktop、Windsurf、Cherry Studio、Cline 等客户端而不同，请使用各客户端的 MCP 设置入口。
 
-```json
-{
-  "mcpServers": {
-    "bt-panel": {
-      "command": "node",
-      "args": ["本地路径/bt-panel-mcp-server/dist/index.js"],
-      "env": {
-        "BT_PANEL_URL": "http://服务器IP:面板端口/安全入口",
-        "BT_API_KEY": "你的API密钥",
-        "BT_MODE": "readonly"
-      }
-    }
-  }
-}
+### 3. 先做只读连通性检查
+
+重启 MCP 客户端后，先让 AI 执行：
+
+```text
+列出宝塔面板的所有网站，并告诉我当前服务器 CPU、内存和磁盘使用情况。
 ```
 
-**`BT_PANEL_URL` 怎么填？** 对照第一步截图中的信息拼接：
-
-| 情况 | 填写示例 |
-|------|----------|
-| 默认端口 8888，无安全入口 | `http://123.456.789.0:8888` |
-| 自定义端口，无安全入口 | `http://123.456.789.0:35335` |
-| 自定义端口 + 安全入口 | `http://123.456.789.0:35335/a5cbfadd` |
-| 开启了面板 HTTPS | `https://123.456.789.0:35335/a5cbfadd` |
-
-> 安全入口路径在「设置 → 常用设置 → 安全入口」中查看，没设置则不用填。
-
-**其余替换内容：**
-- `你的API密钥` → 第一步「API接口配置」页面中复制的接口密钥
-- `BT_MODE` → `readonly`（只读，默认）或 `full`（含建站/写文件等管理操作）
-
-### 第三步：重启 AI 工具
-
-完全退出并重新打开你的 AI 工具，然后测试：
-
-```
-列出宝塔面板所有网站
-```
-
----
+成功后再按需把 `BT_MODE` 改为 `full` 并重启客户端。不要在不理解影响范围时直接要求 AI 删除、升级或重启服务。
 
 ## 环境变量
 
-| 变量名 | 必填 | 默认值 | 说明 |
-|--------|------|--------|------|
-| `BT_PANEL_URL` | ✅ | — | 宝塔面板地址，如 `http://192.168.1.100:8888`，支持 HTTPS 和安全入口路径 |
-| `BT_API_KEY` | ✅ | — | 宝塔面板 API 接口密钥 |
-| `BT_MODE` | 否 | `readonly` | 工具集模式：`readonly` 只读安全模式 / `full` 全量管理模式（含写操作） |
+| 变量 | 必填 | 默认值 | 说明 |
+|---|---|---|---|
+| `BT_PANEL_URL` | 是 | - | 面板地址，例如 `https://192.0.2.10:35335/a5cbfadd`；支持端口和安全入口 |
+| `BT_API_KEY` | 是 | - | 宝塔 API 接口密钥；只放在 MCP 服务器环境变量中 |
+| `BT_MODE` | 否 | `readonly` | `readonly` 仅开放查询/目录工具；`full` 开放所有管理和官方 API 调用 |
+| `BT_ALLOW_INSECURE_TLS` | 否 | `false` | 仅在确认目标可信且无法配置有效证书时设为 `true`；生产环境应保持 TLS 校验开启 |
 
----
+安全入口、API 密钥、密码、Token、证书私钥和数据库凭据都不应写入自然语言提示词、URL、浏览器代码或 Git 仓库。
 
-## 工具模式说明
+## 使用官方 API 目录
 
-### readonly 模式（默认，安全）
+### 查询一个能力
 
-只包含查询和读取工具，AI 无法对服务器做任何修改：
+例如让 AI 查找 Docker 容器、数据库或证书操作：
 
-| 工具 | 说明 |
-|------|------|
-| `list_sites` | 列出所有网站 |
-| `get_nginx_logs` | 读取 Nginx 访问/错误日志（自动探测路径） |
-| `get_app_logs` | 读取应用层业务日志（自动探测框架路径） |
-| `get_panel_logs` | 读取面板操作日志 |
-| `get_system_status` | 查询 CPU/内存/磁盘/网络实时状态 |
-| `read_file` | 读取服务器任意文件（只读） |
-| `get_nginx_config` | 读取网站 Nginx 配置文件（只读） |
-| `list_domains` | 查询网站绑定的域名列表 |
-| `list_backups` | 查询网站备份列表 |
-
-### full 模式（`BT_MODE=full`）
-
-在 readonly 所有工具基础上，额外开放：
-
-| 工具 | 说明 |
-|------|------|
-| `manage_sites` | 创建/删除/启用/停用网站，修改备注、到期时间 |
-| `manage_domains` | 绑定/解绑域名 |
-| `manage_backups` | 立即备份/删除备份 |
-| `save_nginx_config` | 修改保存 Nginx 配置（⚠️ 谨慎，即时生效） |
-| `save_file` | 写入服务器文件（⚠️ 谨慎） |
-
----
-
-## 工具详细说明
-
-### `list_sites` — 列出所有网站
-
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `search` | string | 否 | 按网站名称模糊搜索 |
-
----
-
-### `get_nginx_logs` — 查询 Nginx 日志（自动探测路径）
-
-> 工具会自动在 `/www/wwwlogs/` 目录下探测日志文件，无需手动填写路径；探测失败时会列出目录内容供参考。
-
-| 参数 | 类型 | 必填 | 默认值 | 说明 |
-|------|------|------|--------|------|
-| `site_name` | string | ✅ | — | 网站域名，如 `example.com` |
-| `log_type` | string | 否 | `access` | `access`（访问日志）或 `error`（错误日志） |
-| `last_lines` | number | 否 | `200` | 读取最后 N 行（最大 2000） |
-| `log_path` | string | 否 | — | 手动指定路径（自动探测失败时使用） |
-
----
-
-### `get_app_logs` — 查询应用层日志（自动探测框架路径）
-
-> 工具会自动在网站根目录下按框架候选路径逐一探测，`framework: auto` 时尝试所有常见框架；探测失败时列出目录结构供参考。
-
-| 参数 | 类型 | 必填 | 默认值 | 说明 |
-|------|------|------|--------|------|
-| `site_name` | string | 二选一 | — | 网站名称，自动推断路径 |
-| `log_path` | string | 二选一 | — | 手动指定日志文件绝对路径 |
-| `framework` | string | 否 | `auto` | `auto`（自动）/ `laravel` / `thinkphp` / `java` / `nodejs` |
-| `last_lines` | number | 否 | `200` | 读取最后 N 行（最大 2000） |
-
-**各框架自动探测路径：**
-
-| 框架 | 候选路径 |
-|------|----------|
-| Laravel | `storage/logs/laravel.log`、`storage/logs/app.log` |
-| ThinkPHP | `runtime/log`、`runtime/logs/app.log` |
-| Java | `logs/app.log`、`logs/error.log`、`app.log` |
-| Node.js | `logs/app.log`、`logs/error.log`、`out.log` |
-
----
-
-### `get_panel_logs` — 查询面板操作日志
-
-| 参数 | 类型 | 必填 | 默认值 | 说明 |
-|------|------|------|--------|------|
-| `limit` | number | 否 | `30` | 返回最近 N 条记录（最大 100） |
-
----
-
-### `get_system_status` — 查询服务器状态
-
-无需参数，返回 CPU、内存、磁盘、网络实时数据。
-
----
-
-### `read_file` — 读取任意文件
-
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `path` | string | ✅ | 文件绝对路径 |
-| `last_lines` | number | 否 | 只读最后 N 行，大文件必填 |
-
----
-
-### `get_nginx_config` — 读取 Nginx 配置
-
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `site_name` | string | ✅ | 网站名称（域名） |
-
----
-
-### `manage_sites` — 网站管理（full 模式）
-
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `action` | string | ✅ | `start` / `stop` / `delete` / `create` / `set_note` / `set_expiry` / `get_php_versions` / `get_site_info` |
-| `site_name` | string | 视情况 | 网站名称 |
-| `path` | string | create 必填 | 网站根目录 |
-| `php_version` | string | 否 | PHP 版本，如 `74`、`80`、`81` |
-| `note` | string | 否 | 备注 |
-| `edate` | string | set_expiry 必填 | 到期日期（`YYYY-MM-DD` 或 `0000-00-00` 永久） |
-| `delete_ftp` / `delete_db` / `delete_path` | boolean | 否 | delete 时是否同时删除关联资源 |
-
----
-
-### `manage_domains` — 域名管理（full 模式）
-
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `action` | string | ✅ | `list` / `add` / `delete` |
-| `site_name` | string | ✅ | 网站名称 |
-| `domain` | string | add/delete 必填 | 要操作的域名 |
-| `port` | number | 否 | 端口，默认 80 |
-
----
-
-### `manage_backups` — 备份管理（full 模式）
-
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `action` | string | ✅ | `list` / `create` / `delete` |
-| `site_name` | string | ✅ | 网站名称 |
-| `backup_id` | number | delete 必填 | 备份 ID（从 list 获取） |
-
----
-
-## 对话使用示例
-
-**日志排查**
-```
-查看 example.com 最近 500 行 Nginx 错误日志
-example.com 最近有哪些 502 错误？
-查看 shop.com 的 Laravel 日志有没有 Exception
+```text
+搜索宝塔官方 API 中与 Docker 容器列表有关的操作，列出可用 ID 和必填参数。
 ```
 
-**系统状态**
-```
-服务器现在 CPU 和内存使用率多少？
-磁盘还有多少空间？
-```
+也可以直接调用 `search_bt_api`：
 
-**网站管理（full 模式）**
-```
-帮我立即备份 example.com
-给 example.com 添加域名 www.example.com
-停用 example.com
+```json
+{ "query": "容器列表", "module": "docker", "include_parameters": false }
 ```
 
-**配置查看**
-```
-读取 example.com 的 Nginx 配置
-查看 /www/wwwroot/example.com/.env 文件
-```
+### 获取准确参数
 
----
+对要执行的操作先调用 `get_bt_api_operation`：
 
-## 🚀 场景案例：AI 生成网站 → 一键部署上线
-
-> 需要 `BT_MODE=full`
-
-这是 bt-mcp 最有趣的使用场景之一：**让 AI 帮你生成网站内容，然后直接部署到服务器，全程不用手动登录面板。**
-
----
-
-### 案例一：小龙虾餐厅落地页（OpenClaw 风格）
-
-**你对 AI 说：**
-
-> "帮我生成一个小龙虾餐厅的宣传落地页，暗红色主题，要有菜单、价格、联系方式，风格现代感强，然后部署到服务器，域名用 claw.myrestaurant.com"
-
-**AI 自动执行的步骤：**
-
-```
-第一步：生成 HTML
-  ↓ AI 生成完整的 index.html（暗红主题、菜单卡片、价格表、微信/电话联系）
-
-第二步：调用 manage_sites（action=create）
-  domain: claw.myrestaurant.com
-  path:   /www/wwwroot/claw.myrestaurant.com
-  → 宝塔自动创建目录 + Nginx 配置
-
-第三步：调用 save_file
-  path:    /www/wwwroot/claw.myrestaurant.com/index.html
-  content: <刚生成的 HTML>
-  → 文件写入服务器
-
-第四步：返回访问地址
-  ✅ 部署完成！访问地址：http://claw.myrestaurant.com
-  ⚠️ 记得把域名 DNS 解析到你服务器的 IP
+```json
+{ "operation": "database/GetDatabasesList" }
 ```
 
-整个过程 **30 秒内完成**，你只需要去域名商把 DNS 指向服务器 IP 即可。
+返回结果会包含请求方法、路径、固定 action、必填参数、类型和官方说明。不要根据猜测拼参数。
 
----
+### 执行操作
 
-### 案例二：没有域名，用 IP 临时预览
+确认目的和参数后，在 `BT_MODE=full` 下调用 `call_bt_api`：
 
-**你对 AI 说：**
-
-> "帮我生成一个活动报名页，直接用服务器 IP 访问就行，不用配域名"
-
-AI 会把域名字段填写为服务器 IP，宝塔建站后直接 `http://服务器IP` 访问。
-
----
-
-### 案例三：已有网站，AI 更新内容
-
-**你对 AI 说：**
-
-> "把 claw.myrestaurant.com 首页的营业时间改成 10:00-22:00，夏季特供区加一道'麻辣小龙虾拼盘 128元'"
-
-AI 会：
-1. `read_file` 读取现有 `index.html`
-2. 修改对应文字
-3. `save_file` 写回服务器
-
-**完全不用手动 SSH 或登录面板。**
-
----
-
-### 完整工作流示意
-
-```
-你的想法（自然语言）
-       ↓
-   AI 生成 HTML
-       ↓
- bt-mcp 创建网站目录
-       ↓
- bt-mcp 写入 index.html
-       ↓
-  域名解析（手动，一次性）
-       ↓
-   🌐 网站上线
+```json
+{
+  "operation": "database/GetDatabasesList",
+  "params": {
+    "p": 1,
+    "limit": 20,
+    "sid": 0
+  }
+}
 ```
 
-> **提示**：如果你的域名已经解析好，整个从「提需求」到「能访问」的过程可以压缩到 1 分钟以内。
+对于带密码、私钥、DNS API Key 或容器配置的操作，`params` 仍可能包含敏感数据；仅在用户已明确授权向其自己的宝塔面板发送这些值时执行。
 
----
+## 常见工作流
+
+### 故障排查
+
+```text
+1. 列出站点并确认目标名称
+2. 读取最近 200 行 Nginx error 日志
+3. 读取应用日志，比较同一时间段的异常
+4. 查询系统负载、内存、磁盘和网络
+5. 只在原因明确后修改配置；修改前先读取原文件并保留回滚内容
+```
+
+可直接对 AI 说：
+
+```text
+排查 example.com 最近的 502：先看 Nginx 错误日志、再看应用日志和系统负载；只报告证据，不修改任何配置。
+```
+
+### 建站和内容发布
+
+```text
+1. 用 manage_sites 创建站点和目录
+2. 用 list_domains / manage_domains 核对域名绑定
+3. 用 save_file 写入 index.html 或应用配置
+4. 用 get_nginx_config 复核虚拟主机配置
+5. 在公网或目标网络访问站点，确认 HTTP 状态、证书和内容
+```
+
+### 数据库、证书、Docker 或计划任务
+
+```text
+1. search_bt_api 找到准确的官方操作
+2. get_bt_api_operation 读取参数、前置条件与影响范围
+3. full 模式下 call_bt_api 执行
+4. 再用对应查询操作验证最终状态、日志或任务结果
+```
+
+涉及删除、覆盖、重启、升级、清理 Binlog、证书替换、容器删除或数据库用户权限变更时，应先说明目标对象、影响范围和回滚方式，再执行。
+
+## 边界与安全模型
+
+- `readonly` 不提供写入和官方 API 调用，但 `read_file` 仍能读取指定文件；不要读取无关的 `.env`、私钥或凭据文件。
+- `full` 是权限开关，不是自动授权。执行破坏性操作前应取得针对具体目标的明确许可。
+- `call_bt_api` 只允许调用内置官方目录中的操作，不接受任意 URL、任意 HTTP 方法或用户自定义 `action`。
+- API 目录来自文档，不是目标主机的能力探测。某些 Docker、Java、反向代理、SSL 或商业插件接口在未安装时会失败。
+- HTTPS 默认验证服务端证书。自签名证书需要显式设置 `BT_ALLOW_INSECURE_TLS=true`，此时应确保访问网络可信。
+- API 接口可能随宝塔面板版本变更；每次面板大版本升级后，应先在测试环境验证关键调用。
 
 ## 常见问题
 
-**Q：提示 "Missing required environment variables"？**
+**提示 `Missing required environment variables`**
 
-检查 `BT_PANEL_URL` 和 `BT_API_KEY` 是否正确填写，重启你的 AI 工具。
+检查 MCP 进程环境中是否同时有 `BT_PANEL_URL` 和 `BT_API_KEY`，修改后完全重启客户端。
 
-**Q：提示请求失败或连接超时？**
+**请求超时、403 或 API 白名单错误**
 
-1. 确认宝塔面板地址和端口正确（默认 8888）
-2. 确认已在宝塔 API 设置中添加了**你的本机 IP** 到白名单
-3. 如果面板开启了 HTTPS 或安全入口，地址要包含完整路径（如 `https://IP:端口/安全路径`）
+确认面板地址/端口正确，MCP 主机 IP 已加入 API 白名单，且防火墙、安全组允许访问面板端口。安全入口需要写入 `BT_PANEL_URL`。
 
-**Q：读取日志提示文件不存在？**
+**HTTPS 连接报证书错误**
 
-- Nginx 日志需要先在宝塔面板开启「访问日志」（网站设置 → 日志）
-- 工具会自动探测并列出目录结构，根据提示补充 `log_path` 参数即可
+优先为面板配置可信证书。只有在确认内网链路和目标身份可信时才设置 `BT_ALLOW_INSECURE_TLS=true`。
 
-**Q：日志内容太多，AI 回复很慢？**
+**官方操作执行失败**
 
-使用 `last_lines` 参数限制读取行数，建议不超过 500 行。
+先用 `get_bt_api_operation` 重查参数，再确认面板版本、对应插件、账户权限和 API 白名单。文档目录覆盖不保证旧版本面板或未安装插件支持该操作。
 
-**Q：full 模式会有什么风险？**
+**full 模式有什么风险**
 
-`save_nginx_config` 和 `save_file` 是写操作，配置错误可能导致网站无法访问。建议在熟悉 AI 行为后再开启 `BT_MODE=full`，平时保持默认 `readonly`。
+它可以修改站点、配置、文件、数据库、证书、容器和系统服务。对生产环境应保持备份、先读取现状、执行后独立验证，并保留回滚内容。
 
----
+## 本地开发与目录更新
 
-## 本地开发
-
-```bash
-cd E:\tools\bt-mcp
-npm install --ignore-scripts
+```powershell
+npm ci
 npm run build
-node dist/index.js   # 输出 "BT Panel MCP Server running (mode: readonly)"
+node dist/index.js
 ```
 
-监听文件变化自动重新编译：
+更新官方目录时，先获取 `cnb.cool/btpanel/docs`，再运行：
 
-```bash
-npm run dev
+```powershell
+$env:BT_OFFICIAL_DOCS_DIR = 'D:\src\btpanel-docs'
+$env:BT_OFFICIAL_DOCS_REVISION = (git -C $env:BT_OFFICIAL_DOCS_DIR rev-parse HEAD)
+npm run generate:api-catalog
+npm run build
 ```
 
----
+生成后应检查操作数量、抽查 GET/POST 路由和必填参数，再在目标面板或测试面板验证重点插件接口。
 
 ## 技术栈
 
-- **语言**：TypeScript
-- **运行时**：Node.js >= 18
-- **MCP SDK**：`@modelcontextprotocol/sdk`
-
----
+- TypeScript
+- Node.js >= 20
+- `@modelcontextprotocol/sdk`
+- 宝塔官方 API 文档目录生成器
 
 ## License
 
 MIT
-
----
-
-## 联系作者
-
-如有问题或建议，欢迎微信交流：
-
-![微信联系方式](./lxfs.jpg)
