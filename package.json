@@ -19,7 +19,7 @@
   "homepage": "https://github.com/SuxyEE/bt-panel-mcp-server#readme",
   "repository": {
     "type": "git",
-    "url": "https://github.com/SuxyEE/bt-panel-mcp-server.git"
+    "url": "git+https://github.com/SuxyEE/bt-panel-mcp-server.git"
   },
   "bugs": {
     "url": "https://github.com/SuxyEE/bt-panel-mcp-server/issues"
